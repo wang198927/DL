@@ -26,7 +26,7 @@ class FullyConnectLay2:
 
     def forward(self, x):
         self.x = x  # 把中间结果保存下来，以备反向传播时使用
-        self.y = np.dot(self.weights, x) + self.bias  # 计算w11*a1+w12*a2+bias1
+        self.y = np.dot(self.weights, x) + self.bias
         return self.y  # 将这一层计算的结果向前传递
 
     def backward(self, d):
@@ -50,9 +50,9 @@ class SigmoidHidden:
         self.y = self.sigmoid(x)
         return self.y
 
-    def backward(self,d):  # 这里sigmoid是最后一层，所以从这里开始反向计算梯度
+    def backward(self,d):
         sig = self.sigmoid(self.x)
-        self.dx = d * sig * (1 - sig)
+        self.dx = d * sig * (1 - sig) #乘以传过来的求导结果
         return self.dx  # 反向传递梯度
 
 class Sigmoid:
