@@ -1,7 +1,7 @@
 import numpy as np
 
 class FullyConnectLay1:
-    def __init__(self, l_x, l_y):  # 两个参数分别为输入层的长度和输出层的长度
+    def __init__(self, l_x, l_y):  # 两个参数
         self.weights = np.random.randn(l_y, l_x)  # 使用随机数初始化参数
         self.bias = np.random.randn(1)  # 使用随机数初始化参数
 
