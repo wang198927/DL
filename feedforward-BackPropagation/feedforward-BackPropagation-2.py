@@ -63,7 +63,7 @@ def main():
         print('forward result: ', y4)
 
         # 执行反向传播
-        d1 = sigmoid.backward(1) #假定均方误差为1
+        d1 = sigmoid.backward(1) #先假定均方误差为1
         dx = fc.backward(d1)
         dx11 = sigmoid11.backward(dx[0,0])
         dx12 = sigmoid12.backward(dx[0,1])
