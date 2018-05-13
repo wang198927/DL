@@ -8,7 +8,7 @@ y_ = tf.placeholder("float", shape = [None, 10])
 
 #卷积操作封一层，方便传参数
 def conv2d(X, W):
-    return tf.nn.conv2d(input=X, filter=W, strides=[1, 1, 1, 1], padding='SAME')
+    return tf.nn.conv2d(input=X, filter=W, strides=[1, 1, 1, 1], padding='SAME') #padding SAME，边缘补0，保持图片尺寸
 #池化操作封一层，方便传参数
 def max_pool_2x2(X):
     return tf.nn.max_pool(X, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
@@ -61,5 +61,7 @@ for i in range(1000):
 
 #最终测试集
 batch = mnist.test.next_batch(1000)
-testAccuracy = sess.run(accuracy, feed_dict={x: batch[0], y: batch[1]})
+testInputs = batch[0].reshape([1000, 28, 28, 1])
+testLabels = batch[1]
+testAccuracy = sess.run(accuracy, feed_dict={x: testInputs, y_: testLabels,keep_prob: 1.0})
 print ("test accuracy %g"%(testAccuracy))
