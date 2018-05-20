@@ -51,7 +51,7 @@ def read_data(directory):
     data = clean(data)
     test_data = clean(test_data)
     data = data[0:data.shape[0] - 16, :]
-    print(np.shape(data), np.shape(labels))
+    print(np.shape(data), np.shape(labels),np.shape(test_data),np.shape(test_labels))
     data = data.astype(np.float32)
     return names, data, labels,test_data,test_labels
 
@@ -69,7 +69,6 @@ b3 = tf.Variable(tf.random_normal([1024]))
 W_out = tf.Variable(tf.random_normal([1024, len(names)]))
 b_out = tf.Variable(tf.random_normal([len(names)]))
 
-keep_prob = tf.placeholder("float")
 
 #卷积操作封一层，方便传参数
 def conv_layer(X, W, b):
@@ -80,18 +79,15 @@ def conv_layer(X, W, b):
 def max_pool_2x2(X):
     return tf.nn.max_pool(X, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-def model():
+def model(train_flag):
     x_reshaped = tf.reshape(x, shape=[-1, 24, 24, 1])
-
     conv_out1 = conv_layer(x_reshaped, W1, b1)
     relu_out1 = tf.nn.relu(conv_out1)
-    axis = list(range(len(relu_out1.get_shape()) - 1))
-    x_norm1 = tf.layers.batch_normalization(relu_out1,axis=axis, training=train_flag)
+    x_norm1 = tf.layers.batch_normalization(relu_out1,axis=-1, training=train_flag)
     maxpool_out1 = max_pool_2x2(x_norm1)
     conv_out2 = conv_layer(maxpool_out1, W2, b2)
     relu_out2 = tf.nn.relu(conv_out2)
-    axis = list(range(len(relu_out2.get_shape()) - 1))
-    x_norm2 = tf.layers.batch_normalization(relu_out2,axis=axis, training=train_flag)
+    x_norm2 = tf.layers.batch_normalization(relu_out2,axis=-1, training=train_flag)
     maxpool_out2 = max_pool_2x2(x_norm2)
     maxpool_reshaped = tf.reshape(maxpool_out2, [-1, W3.get_shape().as_list()[0]])
     local = tf.add(tf.matmul(maxpool_reshaped, W3), b3)
@@ -101,7 +97,7 @@ def model():
     return out
 
 
-model_op = model()
+model_op = model(train_flag)
 
 loss = tf.reduce_mean(
     tf.nn.softmax_cross_entropy_with_logits(logits=model_op, labels=y)
@@ -112,26 +108,43 @@ with tf.control_dependencies(update_ops):
 
 correct_pred = tf.equal(tf.argmax(model_op, 1), tf.argmax(y, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
-
+saver = tf.train.Saver()
+'''
+var_list = tf.trainable_variables()
+g_list = tf.global_variables()
+bn_moving_vars = [g for g in g_list if 'moving_mean' in g.name]
+bn_moving_vars += [g for g in g_list if 'moving_variance' in g.name]
+var_list += bn_moving_vars
+saver = tf.train.Saver(var_list=var_list, max_to_keep=5)
+'''
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     onehot_labels = tf.one_hot(labels, len(names), axis=-1)
     onehot_vals = sess.run(onehot_labels)
     batch_size = 64
     print('batch size', batch_size)
-    for j in range(0, 30):
+    for j in range(0, 100):
         avg_accuracy_val = 0.
         batch_count = 0.
         for i in range(0, len(data), batch_size):
             batch_data = data[i:i+batch_size, :]
             batch_onehot_vals = onehot_vals[i:i+batch_size, :]
-            _, accuracy_val = sess.run([train_op, accuracy], feed_dict={x: batch_data, y: batch_onehot_vals,train_flag:True})
+            sess.run(train_op, feed_dict={x: batch_data, y: batch_onehot_vals,train_flag:True})
+            accuracy_val = sess.run(accuracy, feed_dict={x: batch_data, y: batch_onehot_vals,train_flag:False})
             avg_accuracy_val += accuracy_val
             batch_count += 1.
         avg_accuracy_val /= batch_count
         print('Epoch {}. Avg accuracy {}'.format(j, avg_accuracy_val))
 
-    testInputs = test_data[0:batch_size, :]
-    testLabels = onehot_vals[0:batch_size, :]
-    testAccuracy = sess.run(accuracy, feed_dict={x: testInputs, y: testLabels,train_flag:False})
+    g_list = tf.global_variables()
+    sess.run(g_list)
+    bn_moving_vars = [g for g in g_list if 'moving_mean' in g.name]
+    print(bn_moving_vars)
+    save_path = saver.save(sess, './model/CNN_BN_Cifar10_model')
+    print("Model saved in file: %s" % save_path)
+    test_onehot_labels = tf.one_hot(test_labels, len(names), axis=-1)
+    test_onehot_vals = sess.run(test_onehot_labels)
+    testInputs = test_data[0:64, :]
+    testLabels = test_onehot_vals[0:64, :]
+    testAccuracy = sess.run( accuracy, feed_dict={x: testInputs, y: testLabels,train_flag:False})
     print("test accuracy %g" % (testAccuracy))
